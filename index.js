@@ -46,11 +46,10 @@ async function run() {
 
     app.get('/bookings', async (req, res) => {
       let query = {};
-      if(req.query?.email){
-        query = {email : req.query.email}
+      if (req.query?.email) {
+          query = { email: req.query.email };
       }
-      const cursor = await bookingCollection.find();
-      const result = await cursor.toArray();
+      const result = await bookingCollection.find(query).toArray();
       res.send(result);
     })
 
@@ -59,10 +58,56 @@ async function run() {
 
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
-
       const result = await roomCollection.findOne(query);
       res.send(result);
     })
+
+    app.get('/bookings/:id', async (req, res) => {
+
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await bookingCollection.findOne(query);
+      res.send(result);
+    })
+
+    app.put('/bookings/:id', async (req, res) => {
+      const id = req.params.id;
+      const newDate = req.body.date; 
+      try {
+        const updatedBooking = await bookingCollection.findOneAndUpdate(
+          { _id: ObjectId(id) }, // Filter by booking ID
+          { $set: { date: newDate } }, // Update the date
+          { returnOriginal: false } 
+        );
+    
+        if (!updatedBooking.value) {
+          return res.status(404).json({ message: 'Booking not found' });
+        }
+    
+        res.json(updatedBooking.value);
+      } catch (error) {
+        console.error('Error updating booking:', error);
+        res.status(500).json({ message: 'Server error' });
+      }
+    });
+
+    
+    app.put('/bookings/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedItem = req.body;
+      const updateDoc = {
+        $set: {
+                date: updatedItem.date
+        }
+      }
+      const result = await artCollection.updateOne(filter, updateDoc, options);
+      res.send(result);
+    });
+    
+    
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
