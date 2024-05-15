@@ -11,6 +11,7 @@ app.use(cookieParser())
 app.use(cors({
   origin: [
     "http://localhost:5173",
+    "https://lambent-heliotrope-241ad2.netlify.app"
   ],
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   credentials: true,
@@ -58,6 +59,7 @@ async function run() {
 
     const roomCollection = client.db('hotelRoom').collection('rooms');
     const bookingCollection = client.db('hotelRoom').collection('bookings');
+    const reviewCollection = client.db('hotelRoom').collection('reviews');
 
 
     // jwt 
@@ -155,8 +157,23 @@ async function run() {
         res.status(500).json({ message: 'Server error' });
       }
     });
+   
+    // review
+      
+    app.get('/reviews/:id', async (req, res) => {
+
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await reviewCollection.findOne(query);
+      res.send(result);
+    })
 
 
+    app.post('/reviews', async (req, res) => {
+      const reviews = req.body;
+      const result = await reviewCollection.insertOne(reviews);
+      res.send(result);
+    })
 
     // unable to update the booking
     app.patch('/rooms/:id', async (req, res) => {
