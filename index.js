@@ -1,11 +1,20 @@
 const express = require('express');
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
+const jwt = require('jsonwebtoken')
+const cookieParser = require('cookie-parser')
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
+
 const app = express();
 const port = process.env.PORT || 5000;
-// Middleware
-app.use(cors());
+app.use(cookieParser())
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+  ],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+  credentials: true,
+}));
 app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.8bqmuq9.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -19,15 +28,59 @@ const client = new MongoClient(uri, {
   }
 });
 
+
+// middileware
+
+const logger = (req, res, next) => {
+  console.log(`logInfo ${req.method} ${req.url}`);
+  next();
+}
+
+const varifyToken = (req, res, next) => {
+  const token = req?.cookies?.token;
+  // console.log("token in middile ware" , token);
+  if (!token) {
+    return res.status(401).send({ message: 'unauthorized access' });
+  }
+  jwt.verify(token, process.env.ACCESS_TOKON_SECRET, (err, user) => {
+    if (err) {
+      return res.Status(403).send({ message: 'unauthorized access' });
+    } else {
+      req.user = user;
+      next();
+    }
+  })
+}
+
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
-
     // data insert 
 
     const roomCollection = client.db('hotelRoom').collection('rooms');
     const bookingCollection = client.db('hotelRoom').collection('bookings');
+
+
+    // jwt 
+    app.post('/jwt', async (req, res) => {
+      const user = req.body;
+      console.log('user token', user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+      })
+        .send({ success: true });
+    })
+
+    app.post('/logout', async (req, res) => {
+      const user = req.body;
+      console.log('logging out', user);
+      res
+        .clearCookie('token', { maxAge: 0, sameSite: 'none', secure: true })
+        .send({ success: true })
+    })
+
 
 
 
@@ -47,7 +100,7 @@ async function run() {
     app.get('/bookings', async (req, res) => {
       let query = {};
       if (req.query?.email) {
-          query = { email: req.query.email };
+        query = { email: req.query.email };
       }
       const result = await bookingCollection.find(query).toArray();
       res.send(result);
@@ -69,7 +122,7 @@ async function run() {
       const result = await bookingCollection.findOne(query);
       res.send(result);
     })
-     
+
     // delete 
     app.delete('/bookings/:id', async (req, res) => {
       const id = req.params.id;
@@ -77,8 +130,6 @@ async function run() {
       const result = await bookingCollection.deleteOne(query);
       res.send(result);
     })
-
-
 
 
     app.patch('/bookings/:id', async (req, res) => {
@@ -92,7 +143,7 @@ async function run() {
           }
         };
         const result = await bookingCollection.updateOne(filter, updateDoc);
-        
+
         // Check if the update operation was successful
         if (result.modifiedCount === 1) {
           res.status(200).json({ message: 'Booking updated successfully' });
@@ -104,8 +155,33 @@ async function run() {
         res.status(500).json({ message: 'Server error' });
       }
     });
-    
-    
+
+
+
+    // unable to update the booking
+    app.patch('/rooms/:id', async (req, res) => {
+      const id = req.params.id;
+      const updateDoc = req.body;
+      const query = { _id: new ObjectId(id) }
+      const update = {
+        $set: {
+          availability: updateDoc.availability
+        }
+      }
+      const result = await roomCollection.updateOne(query, update);
+      res.json(result);
+    })
+
+    app.get('/unavailable/:availability', async (req, res) => {
+      const email = req.params.availability;
+      const query = { availability: email }
+      const result = await roomCollection.find(query).toArray();
+      res.send(result);
+    })
+
+
+
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
