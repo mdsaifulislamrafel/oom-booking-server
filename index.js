@@ -69,41 +69,40 @@ async function run() {
       const result = await bookingCollection.findOne(query);
       res.send(result);
     })
-
-    app.put('/bookings/:id', async (req, res) => {
+     
+    // delete 
+    app.delete('/bookings/:id', async (req, res) => {
       const id = req.params.id;
-      const newDate = req.body.date; 
+      const query = { _id: new ObjectId(id) }
+      const result = await bookingCollection.deleteOne(query);
+      res.send(result);
+    })
+
+
+
+
+    app.patch('/bookings/:id', async (req, res) => {
       try {
-        const updatedBooking = await bookingCollection.findOneAndUpdate(
-          { _id: ObjectId(id) }, // Filter by booking ID
-          { $set: { date: newDate } }, // Update the date
-          { returnOriginal: false } 
-        );
-    
-        if (!updatedBooking.value) {
-          return res.status(404).json({ message: 'Booking not found' });
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updatedItem = req.body;
+        const updateDoc = {
+          $set: {
+            date: updatedItem.date
+          }
+        };
+        const result = await bookingCollection.updateOne(filter, updateDoc);
+        
+        // Check if the update operation was successful
+        if (result.modifiedCount === 1) {
+          res.status(200).json({ message: 'Booking updated successfully' });
+        } else {
+          res.status(404).json({ message: 'Booking not found or no changes were made' });
         }
-    
-        res.json(updatedBooking.value);
       } catch (error) {
         console.error('Error updating booking:', error);
         res.status(500).json({ message: 'Server error' });
       }
-    });
-
-    
-    app.put('/bookings/:id', async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const options = { upsert: true };
-      const updatedItem = req.body;
-      const updateDoc = {
-        $set: {
-                date: updatedItem.date
-        }
-      }
-      const result = await artCollection.updateOne(filter, updateDoc, options);
-      res.send(result);
     });
     
     
