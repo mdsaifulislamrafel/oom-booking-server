@@ -11,14 +11,16 @@ app.use(cookieParser())
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://lambent-heliotrope-241ad2.netlify.app"
+    "https://hotels-bookings-room.netlify.app"
   ],
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   credentials: true,
 }));
 app.use(express.json());
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.8bqmuq9.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.8bqmuq9.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+const uri = `mongodb+srv://${process.env.DB_NAME}:${process.env.DB_PASSWORD}@cluster0.2lraink.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+
 
 // const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.2lraink.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -58,7 +60,7 @@ const varifyToken = (req, res, next) => {
 
 async function run() {
   try {
-    // data insert 
+    // Connect the client to the server	(optional starting in v4.7)
 
     const roomCollection = client.db('hotelRoom').collection('rooms');
     const bookingCollection = client.db('hotelRoom').collection('bookings');
@@ -90,10 +92,21 @@ async function run() {
 
 
     app.get('/rooms', async (req, res) => {
-      const cursor = await roomCollection.find();
-      const result = await cursor.toArray();
+      const result = await roomCollection.find().toArray();
       res.send(result);
     })
+
+
+    app.get('/rooms/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await roomCollection.findOne(query);
+      res.send(result);
+    })
+
+
+
+
 
     app.post('/bookings', async (req, res) => {
       const bookings = req.body;
@@ -112,13 +125,7 @@ async function run() {
     })
 
 
-    app.get('/rooms/:id', async (req, res) => {
 
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) }
-      const result = await roomCollection.findOne(query);
-      res.send(result);
-    })
 
     app.get('/bookings/:id', async (req, res) => {
 
@@ -163,7 +170,7 @@ async function run() {
 
     // review
 
-  
+
 
     app.post('/reviews', async (req, res) => {
       const reviews = req.body;
@@ -178,18 +185,49 @@ async function run() {
 
 
     // unable to update the booking
+
     app.patch('/rooms/:id', async (req, res) => {
       const id = req.params.id;
       const updateDoc = req.body;
-      const query = { _id: new ObjectId(id) }
+      const filter = { _id: new ObjectId(id) }
+      const options = { upsert: true };
       const update = {
         $set: {
-          availability: updateDoc.availability
+          availability: updateDoc.availability,
         }
       }
-      const result = await roomCollection.updateOne(query, update);
+      const result = await roomCollection.updateOne(filter, update, options);
       res.json(result);
-    })
+    });
+
+    app.patch('/room-available/:id', async (req, res) => {
+      const id = req.params.id;
+      const updateDoc = req.body;
+      console.log(id, updateDoc);
+
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).json({ error: 'Invalid ID format' });
+      }
+
+      const filter = { _id: new ObjectId(id) };
+      const update = {
+        $set: {
+          availability: updateDoc.availability,
+        }
+      };
+
+      try {
+        const result = await roomCollection.updateOne(filter, update);
+        if (result.matchedCount === 0) {
+          return res.status(404).json({ error: 'Room not found' });
+        }
+        res.json(result);
+      } catch (error) {
+        console.error('Error updating room availability:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
+
 
     app.get('/unavailable/:availability', async (req, res) => {
       const email = req.params.availability;
@@ -197,17 +235,10 @@ async function run() {
       const result = await roomCollection.find(query).toArray();
       res.send(result);
     })
-
-
-
-
-
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
-    // Ensures that the client will close when you finish/error
-    // await client.close();
+
   }
 }
 run().catch(console.dir);
