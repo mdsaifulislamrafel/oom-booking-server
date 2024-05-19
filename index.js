@@ -174,12 +174,20 @@ async function run() {
 
     app.post('/reviews', async (req, res) => {
       const reviews = req.body;
+      console.log(reviews);
       const result = await reviewCollection.insertOne(reviews);
       res.send(result);
     })
 
     app.get('/review', async (req, res) => {
       const result = await reviewCollection.find().sort({ timestamp: -1 }).toArray();
+      res.send(result);
+    });
+    
+    app.get('/review/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { id: id }; // এখানে ডিটেইল এর আইডি হবে 'id' না '_id'
+      const result = await reviewCollection.find(query).toArray();
       res.send(result);
     });
 
