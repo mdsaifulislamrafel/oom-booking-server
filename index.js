@@ -20,6 +20,9 @@ app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.8bqmuq9.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
+// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.2lraink.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+
+
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -94,7 +97,7 @@ async function run() {
 
     app.post('/bookings', async (req, res) => {
       const bookings = req.body;
-      console.log(bookings)
+
       const result = await bookingCollection.insertOne(bookings);
       res.send(result);
     })
@@ -157,23 +160,22 @@ async function run() {
         res.status(500).json({ message: 'Server error' });
       }
     });
-   
+
     // review
-      
-    app.get('/reviews/:id', async (req, res) => {
 
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) }
-      const result = await reviewCollection.findOne(query);
-      res.send(result);
-    })
-
+  
 
     app.post('/reviews', async (req, res) => {
       const reviews = req.body;
       const result = await reviewCollection.insertOne(reviews);
       res.send(result);
     })
+
+    app.get('/review', async (req, res) => {
+      const result = await reviewCollection.find().sort({ timestamp: -1 }).toArray();
+      res.send(result);
+    });
+
 
     // unable to update the booking
     app.patch('/rooms/:id', async (req, res) => {
