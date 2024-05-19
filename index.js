@@ -197,17 +197,12 @@ async function run() {
         }
       }
       const result = await roomCollection.updateOne(filter, update, options);
-      res.json(result);
+      res.send(result);
     });
 
     app.patch('/room-available/:id', async (req, res) => {
       const id = req.params.id;
       const updateDoc = req.body;
-      console.log(id, updateDoc);
-
-      if (!ObjectId.isValid(id)) {
-        return res.status(400).json({ error: 'Invalid ID format' });
-      }
 
       const filter = { _id: new ObjectId(id) };
       const update = {
@@ -215,17 +210,9 @@ async function run() {
           availability: updateDoc.availability,
         }
       };
+      const result = await roomCollection.updateOne(filter, update);
+      res.send(result);
 
-      try {
-        const result = await roomCollection.updateOne(filter, update);
-        if (result.matchedCount === 0) {
-          return res.status(404).json({ error: 'Room not found' });
-        }
-        res.json(result);
-      } catch (error) {
-        console.error('Error updating room availability:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
-      }
     });
 
 
