@@ -184,12 +184,6 @@ async function run() {
       res.send(result);
     });
     
-    app.get('/review/:id', async (req, res) => {
-      const id = req.params.id;
-      const query = { id: id }; // এখানে ডিটেইল এর আইডি হবে 'id' না '_id'
-      const result = await reviewCollection.find(query).toArray();
-      res.send(result);
-    });
 
 
     // unable to update the booking
